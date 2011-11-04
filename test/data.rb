@@ -82,5 +82,45 @@ class Rating
   belongs_to :user
 end
 
+class Entity
+  include DataMapper::Resource
+  property :id, Serial 
+  property :name, String
+
+  table_superclass
+end
+
+class Humanoid
+  include DataMapper::Resource
+  property :id, Serial 
+  property :strength, Integer
+
+  descendant_of :entity
+end
+
+class Elf
+  include DataMapper::Resource
+  property :id, Serial 
+  property :ear_length, Integer
+
+  descendant_of :humanoid
+end
+
+class Monster
+  include DataMapper::Resource
+  property :id, Serial 
+  property :fangs, Boolean
+
+  descendant_of :entity
+end
+
+class Vampire
+  include DataMapper::Resource
+  property :id, Serial 
+  property :day_walker, Boolean
+
+  descendant_of :monster
+end
+
 DataMapper.setup(:default, 'sqlite3::memory:')
 DataMapper.auto_migrate! if defined?(DataMapper)

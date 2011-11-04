@@ -2,18 +2,67 @@ module DataMapper
   module CTI
     module Inheritable
 
+      ##
+      # Only if you need top-down access
+      # Adds a discriminator column on the super class
+      #
+      def table_superclass
+        property :sub_type, String
+
+        @table_superclass = true
+
+        ## 
+        # Get the descendant of the 
+        #
+        # ==== Usage
+        #
+        # class Product
+        #   ..
+        #   table_superclass
+        # end
+        #
+        # class Book
+        #   ..
+        #   descendant_of :product
+        # end
+        #
+        # class Video
+        #   ..
+        #   descendant_of :product
+        # end
+        #
+        # product = Product.get_as_descendant 1 # instance of Book
+        #
+        # product = Product.get_as_descendant 2 # instance of Video
+        #
+        def self.get_as_descendant(id)
+          inflector    = DataMapper::Inflector
+          resource     = get(id)
+          target_class = inflector.constantize(resource.sub_type)
+          ancestors    = target_class.table_ancestors + [target_class]
+          ancestors.slice(1,ancestors.length).inject(resource) do |m,tbl|
+            m.send(inflector.underscore(tbl))
+          end
+        end
+
+        ##
+        # Same as get_as_descendant, but pass an options hash with :as_descendant
+        # to load the objects descendant
+        def self.get(*args)
+          opts = args.last.kind_of?(Hash) ? args.pop : {}
+          opts[:as_descendant] ? get_as_descendant(*args) : super
+        end
+      end
+
       def descendant_of(parent_model)
         inflector    = DataMapper::Inflector
         parent_model = inflector.constantize(inflector.classify(parent_model.to_s))
         parent       = inflector.underscore(parent_model.to_s).to_sym
         child        = inflector.underscore(self).to_sym
 
-        class << self
-          attr_accessor :table_ancestors, :cti_options
-        end
-
-        @cti_options     = {:parent => parent, :parent_model => parent_model}
-        @table_ancestors = (parent_model.respond_to?(:table_ancestors) ? parent_model.table_ancestors.dup : []) << parent_model
+        @cti_options      = {:parent => parent, :parent_model => parent_model}
+        @table_ancestors  = (parent_model.respond_to?(:table_ancestors) ? parent_model.table_ancestors.dup : []) << parent_model
+        @table_descendant = true
 
         parent_model.has 1, child, :constraint => :destroy
 
@@ -28,9 +77,16 @@ module DataMapper
 
         belongs_to parent
 
+        before :save do
+          table_root.sub_type = self.class.to_s if table_root.class.is_table_superclass?
+        end
+
         after :destroy do
           table_parent.destroy
         end
+
+        extend ClassMethods
+        include InstanceMethods
 
         self.class_eval <<-RUBY, __FILE__, __LINE__ + 1
 
@@ -46,13 +102,14 @@ module DataMapper
           end
 
         RUBY
-
-        extend ClassMethods
-        include InstanceMethods
       end
 
       def is_table_descendant?
-        false
+        !!@table_descendant
+      end
+
+      def is_table_superclass?
+        !!@table_superclass
       end
 
       module ClassMethods
@@ -65,8 +122,12 @@ module DataMapper
           table_ancestors.first
         end
 
-        def is_table_descendant?
-          true
+        def table_ancestors
+          @table_ancestors
+        end
+
+        def cti_options
+          @cti_options
         end
 
         def finalize

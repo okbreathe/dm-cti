@@ -15,12 +15,21 @@ describe "DataMapper::CTI::Inheritable" do
       assert_respond_to(@wolf, :canine)
     end
 
-    it "should allow you to traverse the resource chain" do
+    it "should allow you to traverse the resource chain upwards" do
       assert !!new_canine.animal
       assert !!new_dog.canine.animal
       assert !!new_wolf.canine.animal
     end
 
+  end
+
+  describe "class" do
+    it "should be a table descendant" do
+      assert !Animal.is_table_descendant?
+      assert Dog.is_table_descendant?
+      assert Wolf.is_table_descendant?
+      assert Canine.is_table_descendant?
+    end
   end
 
   describe "properties" do
@@ -96,7 +105,7 @@ describe "DataMapper::CTI::Inheritable" do
 
   describe "an instance" do
     before do
-      destroy_all
+      destroy_animals
     end
 
     it "should be able to get the root" do
@@ -114,7 +123,7 @@ describe "DataMapper::CTI::Inheritable" do
   describe "on save" do
 
     before do
-      destroy_all
+      destroy_animals
     end
 
     it "should save the model properties to the correct table" do
@@ -156,7 +165,7 @@ describe "DataMapper::CTI::Inheritable" do
 
   describe "on update" do
     before do
-      destroy_all
+      destroy_animals
     end
 
     it "should update the resource chain" do
@@ -171,7 +180,7 @@ describe "DataMapper::CTI::Inheritable" do
                
   describe "on destroy" do
     before do
-      destroy_all
+      destroy_animals
     end
 
     it "should destroy the resource chain" do
@@ -202,12 +211,62 @@ describe "DataMapper::CTI::Inheritable" do
     end
   end
 
-  def destroy_all
+  describe "top-down access" do
+    it "should add a discriminator column" do
+      assert !!Entity.properties[:sub_type]
+    end
+
+    it "should allow you to traverse the resource chain downwards" do
+      assert !!new_vampire.monster.entity
+      assert !!new_elf.humanoid.entity
+    end
+
+    it "should set the type on save" do
+      new_vampire.save
+      assert_equal(1, Entity.count)
+      assert_equal(1, Monster.count)
+      assert_equal(1, Vampire.count)
+      assert_equal("Vampire", Entity.first.sub_type)
+
+      new_elf.save
+      assert_equal(2, Entity.count)
+      assert_equal(1, Humanoid.count)
+      assert_equal(1, Elf.count)
+      assert_equal("Elf", Entity.last.sub_type)
+    end
+
+    it "should return an instance of the sub-type for Klass.get" do
+      new_vampire.save
+      e=Entity.first
+      assert_equal @vampire, Entity.get_as_descendant(@vampire.monster.entity.id)
+      assert_equal @vampire, Entity.get(@vampire.monster.entity.id, :as_descendant => true)
+    end
+
+    it "should destroy the entire resource chain" do
+      new_vampire.save
+      @vampire.destroy
+      assert_equal(0, Entity.count)
+      assert_equal(0, Monster.count)
+      assert_equal(0, Vampire.count)
+    end
+
+    after do
+      destroy_entities
+    end
+  end
+
+  def destroy_animals
     Wolf.destroy
     Dog.destroy
     Canine.destroy
     Animal.destroy
   end
 
+  def destroy_entities
+    Vampire.destroy
+    Monster.destroy
+    Elf.destroy
+    Humanoid.destroy
+    Entity.destroy
+  end
 end
-

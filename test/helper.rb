@@ -66,6 +66,14 @@ class MiniTest::Unit::TestCase
   def new_dog
     @dog = Dog.new(:name => 'dog', :legs => 4, :color => 'brown', :owner => "bob")
   end
+
+  def new_elf
+    @elf = Elf.new(:name => 'Legolas', :ear_length => 4, :strength => 4)
+  end
+
+  def new_vampire
+    @vampire = Vampire.new(:name => 'Count Chocola', :fangs => true, :day_walker => false)
+  end
 end
 
 MiniTest::Unit.autorun
