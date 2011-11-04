@@ -3,9 +3,10 @@ module DataMapper
     module Inheritable
 
       def descendant_of(parent_model)
-        parent_model = DataMapper::Inflector.constantize(DataMapper::Inflector.classify(parent_model.to_s))
-        parent       = DataMapper::Inflector.underscore(parent_model.to_s).to_sym
-        child        = DataMapper::Inflector.underscore(self).to_sym
+        inflector    = DataMapper::Inflector
+        parent_model = inflector.constantize(inflector.classify(parent_model.to_s))
+        parent       = inflector.underscore(parent_model.to_s).to_sym
+        child        = inflector.underscore(self).to_sym
 
         class << self
           attr_accessor :table_ancestors, :cti_options
@@ -21,37 +22,33 @@ module DataMapper
         parent_model.send :define_method, :valid_child? do
           return true unless (descendant = send(child))
           descendant.valid?
-          descendant.errors.delete(DataMapper::Inflector.foreign_key(self.class).to_sym)
+          descendant.errors.delete(inflector.foreign_key(self.class).to_sym)
           descendant.errors.any? ? [false, "#{child} was invalid"] : true
         end
 
         belongs_to parent
 
         after :destroy do
-          send(parent).destroy
+          table_parent.destroy
         end
 
         self.class_eval <<-RUBY, __FILE__, __LINE__ + 1
 
           # Always create the parent when initializing if it doesn't exist
-          def initialize(attributes = nil) # :nodoc:
-            unless #{parent}
-              self.#{parent} = #{parent_model}.new 
-              self.#{parent}.#{child} = self
-            end
+          def initialize(*) # :nodoc:
+            self.#{parent} ||= #{parent_model}.new(:#{child} => self)
             super
           end
 
           # Return the root ancestor of the current object
           def table_root
-            #{table_ancestors.reverse.inject([]){|m,a| m << "#{DataMapper::Inflector.underscore(a)}"}.join('.')}
+            #{table_ancestors.reverse.inject([]){|m,a| m << "#{inflector.underscore(a)}"}.join('.')}
           end
 
         RUBY
 
         extend ClassMethods
         include InstanceMethods
-
       end
 
       def is_table_descendant?
@@ -82,7 +79,12 @@ module DataMapper
             table_ancestors.each { |ancestor|
               ancestor.relationships.each do |relationship|
                 next if relationship.parent_model.is_table_descendant? || relationship.child_model.is_table_descendant?
-                delegations.concat([relationship.name.to_sym,:"#{relationship.name}="])
+                assoc = [ relationship.name.to_sym, :"#{relationship.name}=" ]
+                unless relationship.kind_of?(DataMapper::Associations::OneToMany::Relationship)
+                  fk = DataMapper::Inflector.foreign_key(relationship.name)
+                  assoc.concat([fk,:"#{fk}="])
+                end
+                delegations.concat(assoc)
               end
               delegations.concat ancestor.properties.inject([]) { |m,p| 
                 m.concat([p.name,:"#{p.name}="]) unless p.kind_of?(DataMapper::Property::Serial); m 
@@ -93,7 +95,7 @@ module DataMapper
 
           end
         end
-      end
+      end # ClassMethods
 
       module InstanceMethods
 
@@ -102,12 +104,15 @@ module DataMapper
           table_root.destroy
         end
 
+        def table_parent
+          send("#{DataMapper::Inflector.underscore self.class.table_parent_model}")
+        end
+
         # Combine ancestors errors
         def errors
           @errors ||= begin
             errors = ::DataMapper::Validations::ValidationErrors.new(self)
-            parent = send("#{DataMapper::Inflector.underscore self.class.table_parent_model}")
-            parent.errors.send(:errors).each do |field_name,messages|
+            table_parent.errors.send(:errors).each do |field_name,messages|
               messages.each { |message| errors.add(field_name, message) } 
             end
             errors
@@ -116,10 +121,15 @@ module DataMapper
 
         # Combine ancestors attributes
         def attributes(key_on = :name)
-          super.merge(send("#{DataMapper::Inflector.underscore self.class.table_parent_model}").attributes)
+          super.merge(table_parent.attributes)
         end
 
-      end
+        def save
+          table_parent.save if table_parent.dirty?
+          super
+        end
+
+      end # InstanceMethods
 
     end # Inheritable
   end # Is

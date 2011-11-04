@@ -50,11 +50,39 @@ describe "DataMapper::CTI::Inheritable" do
     before do
       @user    = User.create(:name => "user")
       @whiskey = Whiskey.create(:name => "whiskey", :abv => 50, :bottled => Date.new(1984), :age => 10, :user => @user)
+      @beer    = Beer.create(:name => "whiskey", :abv => 10, :srm => 10, :ibu => 10, :user => @user)
     end
 
-    it "should work" do
+    it "delegate parent attributes to its ancestors" do
+      assert_respond_to(@whiskey, :name)
+      assert_respond_to(@whiskey, :abv)
+      assert_respond_to(@whiskey, :user)
+      assert_respond_to(@whiskey, :user_id)
+      assert_respond_to(@whiskey, :ratings)
+
+      assert_respond_to(@beer, :name)
+      assert_respond_to(@beer, :abv)
+      assert_respond_to(@beer, :user)
+      assert_respond_to(@beer, :user_id)
+      assert_respond_to(@beer, :ratings)
+
+    end
+
+    it "create resources" do
+      assert_equal(1, Beer.count)
       assert_equal(1, Whiskey.count)
-      assert_equal(1, Drink.count)
+      assert_equal(2, Drink.count)
+    end
+
+    it "should operate correctly with delegated associations" do
+      @whiskey.ratings << Rating.new(:score => 10, :user => @user)
+      @beer.ratings  << Rating.new(:score => 10, :user => @user)
+      @whiskey.save
+      @beer.save
+      assert_equal(2, Rating.count)
+      @whiskey.ratings.destroy
+      @beer.ratings.destroy
+      assert_equal(0, Rating.count)
     end
 
     after do
@@ -62,6 +90,7 @@ describe "DataMapper::CTI::Inheritable" do
       Beer.destroy
       Drink.destroy
       User.destroy
+      Rating.destroy
     end
   end
 

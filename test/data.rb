@@ -79,6 +79,7 @@ class Rating
   property :score, Integer
 
   belongs_to :drink
+  belongs_to :user
 end
 
 DataMapper.setup(:default, 'sqlite3::memory:')
