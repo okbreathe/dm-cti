@@ -111,7 +111,7 @@ module DataMapper
         # Combine ancestors errors
         def errors
           @errors ||= begin
-            errors = ::DataMapper::Validations::ValidationErrors.new(self)
+            errors = super
             table_parent.errors.send(:errors).each do |field_name,messages|
               messages.each { |message| errors.add(field_name, message) } 
             end
