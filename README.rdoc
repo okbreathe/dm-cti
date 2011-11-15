@@ -2,6 +2,8 @@
 
 Simple Class Table Inheritance for DataMapper
 
+*NOTE* - This probably isn't yet ready for use.
+
 == Contributing to dm-cti
  
 * Check out the latest master to make sure the feature hasn't been implemented or the bug hasn't been fixed yet
@@ -16,4 +18,3 @@ Simple Class Table Inheritance for DataMapper
 
 Copyright (c) 2011 Asher Van Brunt. See LICENSE.txt for
 further details.
-

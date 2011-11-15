@@ -36,17 +36,29 @@ describe "DataMapper::CTI::Inheritable" do
 
     it "delegate parent attributes to its ancestors" do
       new_canine
+      assert_respond_to(@canine, :animal)
+      assert_respond_to(@canine, :animal=)
+      assert_respond_to(@canine, :animal_id=)
+      assert_respond_to(@canine, :animal_id)
       assert_respond_to(@canine, :name)
       assert_respond_to(@canine, :legs)
       assert_respond_to(@canine, :color)
 
       new_dog
+      assert_respond_to(@dog, :canine)
+      assert_respond_to(@dog, :canine=)
+      assert_respond_to(@dog, :canine_id=)
+      assert_respond_to(@dog, :canine_id)
       assert_respond_to(@dog, :name)
       assert_respond_to(@dog, :legs)
       assert_respond_to(@dog, :color)
       assert_respond_to(@dog, :owner)
 
       new_wolf
+      assert_respond_to(@wolf, :canine)
+      assert_respond_to(@wolf, :canine=)
+      assert_respond_to(@wolf, :canine_id=)
+      assert_respond_to(@wolf, :canine_id)
       assert_respond_to(@wolf, :name)
       assert_respond_to(@wolf, :legs)
       assert_respond_to(@wolf, :color)
@@ -117,6 +129,11 @@ describe "DataMapper::CTI::Inheritable" do
       new_wolf.save
       @wolf.reload
       assert_same_elements([:name, :legs, :color, :power_level,:animal_id, :canine_id, :id], @wolf.attributes.keys)
+    end
+
+    it "should return the combined dirty attributes" do
+      new_wolf
+      assert_same_elements([:name, :legs, :color, :power_level,:animal_id, :canine_id], @wolf.dirty_attributes.keys.map(&:name))
     end
   end
 
@@ -216,6 +233,10 @@ describe "DataMapper::CTI::Inheritable" do
       assert !!Entity.properties[:sub_type]
     end
 
+    it "root table be aware of descendants" do
+      assert_same_elements [Humanoid,Elf,Monster,Vampire], Entity.table_descendants
+    end
+
     it "should allow you to traverse the resource chain downwards" do
       assert !!new_vampire.monster.entity
       assert !!new_elf.humanoid.entity
@@ -237,9 +258,7 @@ describe "DataMapper::CTI::Inheritable" do
 
     it "should return an instance of the sub-type for Klass.get" do
       new_vampire.save
-      e=Entity.first
       assert_equal @vampire, Entity.get_as_descendant(@vampire.monster.entity.id)
-      assert_equal @vampire, Entity.get(@vampire.monster.entity.id, :as_descendant => true)
     end
 
     it "should destroy the entire resource chain" do

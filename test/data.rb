@@ -29,28 +29,6 @@ class Wolf
   descendant_of "Canine"
 end
 
-class Drink
-  include DataMapper::Resource
-
-  property :id,    Serial 
-  property :name,  String,  :length  => 512, :required => true
-  property :abv,   Float, :max => 100.00, :min => 0.00, :precision => 4, :scale => 2
-
-  belongs_to :user
-  has n, :ratings
-end
-
-class Whiskey
-  include DataMapper::Resource
-
-  property :id,      Serial 
-  property :age,     Integer, :max    => 100
-  property :bottled, Date
-
-  descendant_of :drink
-
-end
-
 class Beer
   include DataMapper::Resource
 
@@ -62,14 +40,15 @@ class Beer
 
 end
 
-class User
+class Drink
   include DataMapper::Resource
 
   property :id,    Serial 
   property :name,  String,  :length  => 512, :required => true
+  property :abv,   Float, :max => 100.00, :min => 0.00, :precision => 4, :scale => 2
 
-  has n, :drinks
-
+  belongs_to :user
+  has n, :ratings
 end
 
 class Rating
@@ -82,12 +61,25 @@ class Rating
   belongs_to :user
 end
 
-class Entity
+class User
   include DataMapper::Resource
-  property :id, Serial 
-  property :name, String
 
-  table_superclass
+  property :id,    Serial 
+  property :name,  String,  :length  => 512, :required => true
+
+  has n, :drinks
+
+end
+
+class Whiskey
+  include DataMapper::Resource
+
+  property :id,      Serial 
+  property :age,     Integer, :max    => 100
+  property :bottled, Date
+
+  descendant_of :drink
+
 end
 
 class Humanoid
@@ -120,6 +112,14 @@ class Vampire
   property :day_walker, Boolean
 
   descendant_of :monster
+end
+
+class Entity
+  include DataMapper::Resource
+  property :id, Serial 
+  property :name, String
+
+  table_superclass
 end
 
 DataMapper.setup(:default, 'sqlite3::memory:')
