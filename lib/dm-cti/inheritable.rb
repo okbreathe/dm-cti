@@ -106,7 +106,6 @@ module DataMapper
         end
 
         def finalize
-          super
           unless cti_options[:finalized]
             cti_options[:finalized] = true
 
@@ -175,6 +174,7 @@ module DataMapper
 
             delegate *delegations, :to => parent
           end
+          super
         end
 
       end # ClassMethods

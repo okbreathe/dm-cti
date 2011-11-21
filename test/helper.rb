@@ -9,7 +9,6 @@ rescue Bundler::BundlerError => e
 end
 require 'minitest/spec'
 require 'minitest/autorun'
-require 'minitest/autorun'
 require 'minitest-rg'
 require 'rr'
 require 'dm-migrations'
